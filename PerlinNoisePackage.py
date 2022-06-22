@@ -136,9 +136,9 @@ class Game:
                     self.mPosBuf = [True,Vector2(even.pos)]
         pressed=key.get_pressed()
         if pressed[K_s]:
-            self.roll[1]+=5
+            self.roll[1]+=4
         if pressed[K_w]:
-            self.roll[1]-=5
+            self.roll[1]-=4
 
     def mainUpdate(self):
         pass
