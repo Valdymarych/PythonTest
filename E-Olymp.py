@@ -15,8 +15,6 @@ class View:
         self.updatePost(events)
 
     def draw(self,surface):
-        self.surface.fill((0,0,0))
-        self.surface.set_colorkey((0,0,0))
         self.drawSelf()
         self.drawPost()
         surface.blit(self.surface,self.rect.topleft)
@@ -69,6 +67,7 @@ class Button(View):
                 self.onClick()
         else:
             self.background=self.backgroundStd
+
 class Text(View):
     def __init__(self,x,y,text,textColor,fontSize,background):
         self.text=text
@@ -77,6 +76,11 @@ class Text(View):
         self.background=background
         super(Text, self).__init__(Rect(x, y, 1, 1))
         self.setText(text)
+
+    def draw(self,surface):
+        self.surface.fill((0,0,0))
+        self.surface.set_colorkey((0,0,0))
+        super(Text, self).draw(surface)
 
 
     def drawSelf(self):
@@ -94,6 +98,18 @@ class Text(View):
         self.rectDraw=self.surface.get_rect()
         self.absoluteRect.size=self.rectDraw.size
         self.rect.size=self.absoluteRect.size
+
+class Image(View):
+    def __init__(self,rect):
+        super(Image, self).__init__(rect)
+        self.imageSurface=Surface(self.surface.get_rect())
+
+    def drawSelf(self):
+        self.surface.blit(self.imageSurface,(0,0))
+
+    def setSurface(self,surface):
+        self.imageSurface=surface
+
 
 class Game:
     def __init__(self):
