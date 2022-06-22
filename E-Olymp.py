@@ -84,8 +84,6 @@ class Button(View):
     def addText(self,text,textColor,fontSize,background):
         self.addView(Text(0,0,text,textColor,fontSize,background,["center"]))
 
-
-
 class Text(View):
     def __init__(self,x,y,text,textColor,fontSize,background,magnetic=[]):
         self.text=text
@@ -128,6 +126,15 @@ class Image(View):
     def setSurface(self,surface):
         self.imageSurface=surface
 
+class Container(View):
+    def __init__(self,rect,magnetic,background,borderWidth,borderColor):
+        super(Container, self).__init__(rect,magnetic)
+        self.background=background
+        self.borderWidth=borderWidth
+        self.borderColor=borderColor
+    def drawSelf(self):
+        draw.rect(self.surface,self.background,self.rectDraw)
+        draw.rect(self.surface,self.borderColor,self.rectDraw,self.borderWidth)
 
 class Game:
     def __init__(self):
