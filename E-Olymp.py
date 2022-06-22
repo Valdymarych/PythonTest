@@ -64,7 +64,7 @@ class Button(View):
     def updateSelf(self,events):
         if self.absoluteRect.collidepoint(events["mousePos"]):
             self.background=self.backgroundHint
-            if "clickMouse" in events.keys():
+            if "clickMouse" in events.keys() and events["clickMouse"].button==1:
                 self.background=self.backgroundClick
                 self.onClick()
         else:
@@ -75,18 +75,16 @@ class Text(View):
         self.font=font.Font(None,fontSize)
         self.color = textColor
         self.background=background
-        self.renderedText = self.font.render(self.text, True, self.color)
-        self.renderedTextRect=self.renderedText.get_rect()
-        super(Text, self).__init__(Rect(x,y,self.renderedTextRect.width,self.renderedTextRect.height))
+        super(Text, self).__init__(Rect(x, y, 1, 1))
+        self.setText(text)
+
 
     def drawSelf(self):
+        self.surface.fill(self.background)
         self.surface.blit(self.renderedText,self.renderedTextRect)
 
     def updateSelf(self,events):
-        if "wheel" in events.keys():
-            self.setText("CLICK")
-        else:
-            self.setText("NOOOOOOOOOOO")
+        pass
 
     def setText(self,text):
         self.text=text
@@ -114,7 +112,7 @@ class Game:
         self.mPosBuf = [0,Vector2(0,0)]
 
         self.mainView=View(Rect(self.BORDER_WIDTH,self.BORDER_WIDTH,*(self.WINDOW_SIZE-2*Vector2(self.BORDER_WIDTH,self.BORDER_WIDTH)).xy))
-        self.mainView.addView(Button(Rect(100, 100, 100, 100), 34))
+        self.mainView.addView(Button(Rect(100, 100, 100, 100), lambda :print(1)))
         self.mainView.addView(Text(150,150,"qwerty",(255,0,0),30,self.BACKGROUND))
 
     def checkInput(self):
