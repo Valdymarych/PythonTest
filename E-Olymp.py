@@ -15,6 +15,8 @@ class View:
         self.updatePost(events)
 
     def draw(self,surface):
+        self.surface.fill((0,0,0))
+        self.surface.set_colorkey((0,0,0))
         self.drawSelf()
         self.drawPost()
         surface.blit(self.surface,self.rect.topleft)
@@ -68,18 +70,33 @@ class Button(View):
         else:
             self.background=self.backgroundStd
 class Text(View):
-    def __init__(self,rect,text):
-        super(Text, self).__init__(rect)
+    def __init__(self,x,y,text,textColor,fontSize,background):
         self.text=text
-        self.font=font.Font(None,30)
-        self.color=(255,0,0)
-        self.renderedText=self.font.render(self.text,True,self.color)
-        self.renderedTextRect=self.renderedText.get_rect(center=self.rectDraw.center)
-        self.rectDraw=self.renderedTextRect
+        self.font=font.Font(None,fontSize)
+        self.color = textColor
+        self.background=background
+        self.renderedText = self.font.render(self.text, True, self.color)
+        self.renderedTextRect=self.renderedText.get_rect()
+        super(Text, self).__init__(Rect(x,y,self.renderedTextRect.width,self.renderedTextRect.height))
+
     def drawSelf(self):
-        draw.rect(self.surface,(255,255,255),self.rectDraw,2)
-        draw.rect(self.surface,(255,255,255),self.renderedTextRect,1)
         self.surface.blit(self.renderedText,self.renderedTextRect)
+
+    def updateSelf(self,events):
+        if "wheel" in events.keys():
+            self.setText("CLICK")
+        else:
+            self.setText("NOOOOOOOOOOO")
+
+    def setText(self,text):
+        self.text=text
+        self.renderedText = self.font.render(self.text, False, self.color)
+        self.renderedTextRect=self.renderedText.get_rect()
+        self.surface=Surface(self.renderedTextRect.size)
+        self.rectDraw=self.surface.get_rect()
+        self.absoluteRect.size=self.rectDraw.size
+        self.rect.size=self.absoluteRect.size
+
 class Game:
     def __init__(self):
         self.WIDTH = 1000
@@ -97,19 +114,15 @@ class Game:
         self.mPosBuf = [0,Vector2(0,0)]
 
         self.mainView=View(Rect(self.BORDER_WIDTH,self.BORDER_WIDTH,*(self.WINDOW_SIZE-2*Vector2(self.BORDER_WIDTH,self.BORDER_WIDTH)).xy))
-        self.mainView.addView(Text(Rect(150,150,100,100),"qwerty"))
+        self.mainView.addView(Button(Rect(100, 100, 100, 100), 34))
+        self.mainView.addView(Text(150,150,"qwerty",(255,0,0),30,self.BACKGROUND))
+
     def checkInput(self):
         events=event.get()
         eventsDone={}
         for i,even in enumerate(events):
             if even.type == QUIT:
                 self.stop()
-            if even.type == KEYDOWN:
-                pass
-            if even.type == MOUSEBUTTONDOWN:
-                if even.button == BUTTON_LEFT:
-                    self.mPosBuf = [True,Vector2(even.pos)]
-
             if even.type == MOUSEBUTTONDOWN:
                 eventsDone["clickMouse"]=even
             if even.type == KEYDOWN:

@@ -107,8 +107,8 @@ class Button(View):
 
 class Game:
     def __init__(self):
-        self.WIDTH = 1000
-        self.HEIGHT = 500
+        self.WIDTH = 256
+        self.HEIGHT = 256
         self.WINDOW_SIZE = Vector2(self.WIDTH,self.HEIGHT)
         self.FPS = 60
         self.BACKGROUND = (0,0,0)
@@ -123,7 +123,7 @@ class Game:
 
         self.noiseSurface=Surface((700,500))
 
-        self.noise=Noise(1000,500,100)
+        self.noise=Noise(256,256,16)
 
     def checkInput(self):
         for even in event.get():
