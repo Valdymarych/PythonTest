@@ -2,13 +2,20 @@ import numpy as np
 from pygame import *
 init()
 class View:
-    def __init__(self,rect):
-        self.posts = []
+    def __init__(self,rect,magnetic=[]):
+        #  magnetic:     top  down  left  right
 
+        if "top" in magnetic:
+            rect.y=0
+        if "left" in magnetic:
+            rect.x=0
+
+        self.magnetic=magnetic
+        self.posts = []
         self.surface=Surface(rect.size)
-        self.rect=rect
-        self.rectDraw=self.surface.get_rect()
-        self.absoluteRect=rect
+        self.rect=rect                          # координати відносно контейнера
+        self.rectDraw=self.surface.get_rect()   # рект свого сурвейса    (!!! МІНЯЄТЬСЯ ТІЛЬКИ ПРИ RESIZE !!!)
+        self.absoluteRect=rect                  # абсолютні координати
 
     def update(self,events):
         self.updateSelf(events)
@@ -39,13 +46,19 @@ class View:
         view.added(self)
 
     def added(self,view):
+        if "right" in self.magnetic:
+            self.rect.x=view.rect.width-self.rect.width
+        if "down" in self.magnetic:
+            self.rect.y=view.rect.height-self.rect.height
+
         self.absoluteRect=Rect(self.rect.x+view.absoluteRect.x,self.rect.y+view.absoluteRect.y,*self.rect.size)
         for post in self.posts:
             post.added(self)
 
+
 class Button(View):
-    def __init__(self,rect,func):
-        super(Button, self).__init__(rect)
+    def __init__(self,rect,func,magnetic=[]):
+        super(Button, self).__init__(rect,magnetic)
 
         self.onClick=func
         self.backgroundStd=(25,25,25)
@@ -69,12 +82,12 @@ class Button(View):
             self.background=self.backgroundStd
 
 class Text(View):
-    def __init__(self,x,y,text,textColor,fontSize,background):
+    def __init__(self,x,y,text,textColor,fontSize,background,magnetic=[]):
         self.text=text
         self.font=font.Font(None,fontSize)
         self.color = textColor
         self.background=background
-        super(Text, self).__init__(Rect(x, y, 1, 1))
+        super(Text, self).__init__(Rect(x, y, 1, 1),magnetic)
         self.setText(text)
 
     def draw(self,surface):
@@ -100,8 +113,8 @@ class Text(View):
         self.rect.size=self.absoluteRect.size
 
 class Image(View):
-    def __init__(self,rect):
-        super(Image, self).__init__(rect)
+    def __init__(self,rect,magnetic=[]):
+        super(Image, self).__init__(rect,magnetic)
         self.imageSurface=Surface(self.surface.get_rect())
 
     def drawSelf(self):
@@ -128,7 +141,8 @@ class Game:
         self.mPosBuf = [0,Vector2(0,0)]
 
         self.mainView=View(Rect(self.BORDER_WIDTH,self.BORDER_WIDTH,*(self.WINDOW_SIZE-2*Vector2(self.BORDER_WIDTH,self.BORDER_WIDTH)).xy))
-        self.mainView.addView(Button(Rect(100, 100, 100, 100), lambda :print(1)))
+        self.mainView.addView(Button(Rect(100, 100, 100, 100), lambda :print(1),["right"]))
+        self.mainView.addView(Button(Rect(100, 100, 100, 100), lambda: print(1), ["left"]))
         self.mainView.addView(Text(150,150,"qwerty",(255,0,0),30,self.BACKGROUND))
 
     def checkInput(self):
@@ -146,11 +160,11 @@ class Game:
         eventsDone["mousePos"]=mouse.get_pos()
         eventsDone["pressedKey"]=key.get_pressed()
         eventsDone["pressedMouse"]=mouse.get_pressed()
-
         return eventsDone
 
     def mainUpdate(self,events):
         self.mainView.update(events)
+
     def mainDraw(self):
         self.win.fill(self.BACKGROUND)
         self.mainView.draw(self.win)
