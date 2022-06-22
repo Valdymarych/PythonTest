@@ -3,13 +3,16 @@ import random as rd
 from pygame import *
 import math as mt
 import time as tm
-class Noise:
-    def __init__(self,WIDTH,HEIGHT,side):
+class SimpleNoise:
+    def __init__(self,WIDTH,HEIGHT,side,smoothing=1):
         self.WIDTH=WIDTH
         self.HEIGHT=HEIGHT
         self.side=side
         self.noiseArray,self.vectors=np.array([]),[]
         self.noiseSurface=Surface((side,side))
+        self.smoothing=smoothing
+
+        self.smooth=lambda t,i: self.smooth(t*t*(3-2*t),i-1) if i>0 else t
         self.generateNoise()
 
     def generateNoise(self):
@@ -17,15 +20,10 @@ class Noise:
         height = self.HEIGHT + self.side - 1 - (self.HEIGHT - 1) % self.side
         vectors = []
         vectorByAngle = lambda alfa: Vector2(mt.sin(alfa), mt.cos(alfa))
-        interpool = lambda t: t * t * (3 - 2 * t)
-        smoother = lambda t: interpool(interpool(interpool(t)))
-        smooth2 = lambda t: smoother(smoother(smoother(t)))
-        smooth = lambda t:interpool(interpool(t))
         for y in range(int(height // self.side + 1)):
             vectors.append([])
             for x in range(int(width // self.side + 1)):
                 vectors[-1].append(vectorByAngle(rd.random() * mt.pi * 2))
-
         result = np.zeros((height, width), dtype=np.float32)
         sector = np.linspace(0, self.side - 1, self.side, dtype=np.float32) / self.side
         sectorX, sectorY = np.meshgrid(sector, sector)
@@ -38,13 +36,13 @@ class Noise:
                 v2x, v2y = vectors[y + 1][x].xy
                 v3x, v3y = vectors[y][x + 1].xy
                 v4x, v4y = vectors[y + 1][x + 1].xy
-                sectorZ1[:, :] = v1x * sectorX + v1y * sectorY + smooth(sectorY) * (
+                sectorZ1[:, :] = v1x * sectorX + v1y * sectorY + self.smooth(sectorY,self.smoothing) * (
                             sectorX * (v2x - v1x) + sectorY * (v2y - v1y) - v2y)
-                sectorZ2[:, :] = v3x * sectorX2 + v3y * sectorY + smooth(sectorY) * (
+                sectorZ2[:, :] = v3x * sectorX2 + v3y * sectorY + self.smooth(sectorY,self.smoothing) * (
                             sectorX2 * (v4x - v3x) + sectorY * (v4y - v3y) - v4y)
 
-                result[y * self.side:(y + 1) * self.side, x * self.side:(x + 1) * self.side] = sectorZ1 + (sectorZ2 - sectorZ1) * smooth(
-                    sectorX)
+                result[y * self.side:(y + 1) * self.side, x * self.side:(x + 1) * self.side] = sectorZ1 + (sectorZ2 - sectorZ1) * self.smooth(
+                    sectorX,self.smoothing)
         result = (result[:self.HEIGHT, :self.WIDTH] - result.min()) / (-result.min() + result.max()) * 255
         result = result.astype(dtype=np.uint8)
         result = np.rot90(result)
@@ -123,7 +121,7 @@ class Game:
 
         self.noiseSurface=Surface((700,500))
 
-        self.noise=Noise(256,256,16)
+        self.noise=SimpleNoise(256,256,16)
 
     def checkInput(self):
         for even in event.get():

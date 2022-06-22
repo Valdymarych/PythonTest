@@ -148,7 +148,7 @@ class Game:
         self.FPS = 60
         self.BACKGROUND = (0,0,0)
         self.BORDER = (255,0,0)
-        self.BORDER_WIDTH = 10
+        self.BORDER_WIDTH = 1
 
         self.win = display.set_mode(self.WINDOW_SIZE.xy)
         self.clock = time.Clock()
