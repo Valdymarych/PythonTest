@@ -10,6 +10,7 @@ class View:
         if "left" in magnetic:
             rect.x=0
 
+
         self.magnetic=magnetic
         self.posts = []
         self.surface=Surface(rect.size)
@@ -127,14 +128,17 @@ class Image(View):
         self.imageSurface=surface
 
 class Container(View):
-    def __init__(self,rect,magnetic,background,borderWidth,borderColor):
+    def __init__(self,rect,magnetic,background,border):
         super(Container, self).__init__(rect,magnetic)
         self.background=background
-        self.borderWidth=borderWidth
-        self.borderColor=borderColor
+        self.borderWidth=border[0]
+        self.borderColor=border[1]
+
     def drawSelf(self):
         draw.rect(self.surface,self.background,self.rectDraw)
         draw.rect(self.surface,self.borderColor,self.rectDraw,self.borderWidth)
+
+
 
 class Game:
     def __init__(self):
@@ -152,7 +156,7 @@ class Game:
 
         self.mPosBuf = [0,Vector2(0,0)]
 
-        self.mainView=View(Rect(self.BORDER_WIDTH,self.BORDER_WIDTH,*(self.WINDOW_SIZE-2*Vector2(self.BORDER_WIDTH,self.BORDER_WIDTH)).xy))
+        self.mainView=Container(Rect(0,0,self.WIDTH,self.HEIGHT),[],self.BACKGROUND,[self.BORDER_WIDTH,self.BORDER])
         btn=Button(Rect(100, 100, 100, 100), lambda :print(1),["right"])
         btn.addText("print(1)",(255,255,255),30,(0,0,0))
         self.mainView.addView(btn)
@@ -180,9 +184,7 @@ class Game:
         self.mainView.update(events)
 
     def mainDraw(self):
-        self.win.fill(self.BACKGROUND)
         self.mainView.draw(self.win)
-        draw.rect(self.win,self.BORDER,[0,0,self.WIDTH,self.HEIGHT],self.BORDER_WIDTH)
 
     def mainWindowUpdate(self):
         display.update()
