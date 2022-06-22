@@ -50,11 +50,11 @@ class View:
             self.rect.x=view.rect.width-self.rect.width
         if "down" in self.magnetic:
             self.rect.y=view.rect.height-self.rect.height
-
+        if "center" in self.magnetic:
+            self.rect.center=view.rectDraw.center
         self.absoluteRect=Rect(self.rect.x+view.absoluteRect.x,self.rect.y+view.absoluteRect.y,*self.rect.size)
         for post in self.posts:
             post.added(self)
-
 
 class Button(View):
     def __init__(self,rect,func,magnetic=[]):
@@ -81,6 +81,11 @@ class Button(View):
         else:
             self.background=self.backgroundStd
 
+    def addText(self,text,textColor,fontSize,background):
+        self.addView(Text(0,0,text,textColor,fontSize,background,["center"]))
+
+
+
 class Text(View):
     def __init__(self,x,y,text,textColor,fontSize,background,magnetic=[]):
         self.text=text
@@ -91,8 +96,8 @@ class Text(View):
         self.setText(text)
 
     def draw(self,surface):
-        self.surface.fill((0,0,0))
-        self.surface.set_colorkey((0,0,0))
+        self.surface.fill(self.background)
+        self.surface.set_colorkey(self.background)
         super(Text, self).draw(surface)
 
 
@@ -141,8 +146,10 @@ class Game:
         self.mPosBuf = [0,Vector2(0,0)]
 
         self.mainView=View(Rect(self.BORDER_WIDTH,self.BORDER_WIDTH,*(self.WINDOW_SIZE-2*Vector2(self.BORDER_WIDTH,self.BORDER_WIDTH)).xy))
-        self.mainView.addView(Button(Rect(100, 100, 100, 100), lambda :print(1),["right"]))
-        self.mainView.addView(Button(Rect(100, 100, 100, 100), lambda: print(1), ["left"]))
+        btn=Button(Rect(100, 100, 100, 100), lambda :print(1),["right"])
+        btn.addText("print(1)",(255,255,255),30,(0,0,0))
+        self.mainView.addView(btn)
+
         self.mainView.addView(Text(150,150,"qwerty",(255,0,0),30,self.BACKGROUND))
 
     def checkInput(self):
@@ -171,7 +178,6 @@ class Game:
         draw.rect(self.win,self.BORDER,[0,0,self.WIDTH,self.HEIGHT],self.BORDER_WIDTH)
 
     def mainWindowUpdate(self):
-
         display.update()
         self.clock.tick(self.FPS)
         display.set_caption(str(self.clock.get_fps()))
