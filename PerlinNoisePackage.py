@@ -158,8 +158,13 @@ class MixNoise:  #  шум з багатьма октавами
                 #----------------------------------------------------------------------------------
 
                 sector = self.smooth(sector / 256, 4) * 255
+                sec=sector
 
+                sector = mix(sec[:, :, 0], sector, sec*np.array([30, 160, 50])/255, 255)
+                sector = mix(sec[:, :, 0], sector, np.array([200, 200, 0]), 150)
+                sector = mix(sec[:,:,0],sector,sec*np.array([0,100,255])/200,100)
 
+                #sector = sector*np.array([0,100,255])/255
                 #----------------------------------------------------------------------------------
                 noise[y * SimpleNoise.rectSide:yEnd, x * SimpleNoise.rectSide:xEnd]=sector
 
@@ -181,10 +186,9 @@ class MixNoise:  #  шум з багатьма октавами
         self.generateVectors()
         self.generateNoise()
         self.generateSurface()
-class Filter:
-    def __init__(self,type,filter):
-        self.filter=filter
-        self.type=type
+
+def mix(sector,c1,c2,cr):
+    return np.where(np.expand_dims(sector>cr,2),c1,c2)
 
 
 class Game:
