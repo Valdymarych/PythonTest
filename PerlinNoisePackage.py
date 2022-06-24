@@ -3,7 +3,8 @@ import random as rd
 from pygame import *
 import math as mt
 import time as tm
-class SimpleNoise:
+class SimpleNoise: # шум з 1 октавою
+    rectSide=60
     def __init__(self,WIDTH,HEIGHT,side,smoothing=1,zoom=[1,1]):
         self.WIDTH=WIDTH
         self.HEIGHT=HEIGHT
@@ -32,6 +33,7 @@ class SimpleNoise:
 
 
     def generateVectors(self):
+        self.vectors=[]
         vectorByAngle = lambda alfa: Vector2(mt.sin(alfa), mt.cos(alfa))
         for y in range(int(self.vectorsHEIGHT // self.sideY + 1)):
             self.vectors.append([])
@@ -46,14 +48,15 @@ class SimpleNoise:
         sectorX2 = sectorX - 1
         sectorZ1 = np.zeros((self.sideY, self.sideX), dtype=np.float32)
         sectorZ2 = np.zeros((self.sideY, self.sideX), dtype=np.float32)
+
         for y, yVectors in enumerate(self.vectors[:-1]):
             for x, xVector in enumerate(yVectors[:-1]):
                 v1x, v1y = xVector.xy
                 v2x, v2y = self.vectors[y + 1][x].xy
                 v3x, v3y = self.vectors[y][x + 1].xy
                 v4x, v4y = self.vectors[y + 1][x + 1].xy
-                sectorZ1[:, :] = v1x * sectorX + v1y * sectorY + self.smooth(sectorY,self.smoothing) * (sectorX * (v2x - v1x) + sectorY * (v2y - v1y) - v2y)
-                sectorZ2[:, :] = v3x * sectorX2 + v3y * sectorY + self.smooth(sectorY,self.smoothing) * (sectorX2 * (v4x - v3x) + sectorY * (v4y - v3y) - v4y)
+                sectorZ1 = v1x * sectorX + v1y * sectorY + self.smooth(sectorY,self.smoothing) * (sectorX * (v2x - v1x) + sectorY * (v2y - v1y) - v2y)
+                sectorZ2 = v3x * sectorX2 + v3y * sectorY + self.smooth(sectorY,self.smoothing) * (sectorX2 * (v4x - v3x) + sectorY * (v4y - v3y) - v4y)
                 result[y * self.sideY:(y + 1) * self.sideY, x * self.sideX:(x + 1) * self.sideX] = sectorZ1 + (sectorZ2 - sectorZ1) * self.smooth(sectorX,self.smoothing)
         result = result[:self.HEIGHT, :self.WIDTH]
         self.noiseArrayValues = result
@@ -65,8 +68,29 @@ class SimpleNoise:
         self.noiseArrayColors = np.expand_dims(self.noiseArrayColors,2)
         self.noiseArrayColors = np.concatenate([self.noiseArrayColors, self.noiseArrayColors, self.noiseArrayColors], 2)
         self.noiseArrayColors = self.applyFilters(self.noiseArrayColors)
-        self.noiseArrayColors = self.noiseArrayColors.astype(dtype=np.uint8)
-        self.surface = surfarray.make_surface(self.noiseArrayColors)
+        self.surface = surfarray.make_surface(self.noiseArrayColors.astype(dtype=np.uint8))
+
+    def applyFilters(self,noise):
+        for y in range((noise.shape[0]-1)//SimpleNoise.rectSide+1):
+            for x in range((noise.shape[1]-1)//SimpleNoise.rectSide+1):
+                xEnd=(x + 1) * SimpleNoise.rectSide
+                yEnd=(y + 1) * SimpleNoise.rectSide
+                if xEnd>=noise.shape[1]:
+                    xEnd=noise.shape[1]
+                if yEnd>=noise.shape[0]:
+                    yEnd=noise.shape[0]
+
+
+                sector=noise[y * SimpleNoise.rectSide:yEnd, x * SimpleNoise.rectSide:xEnd]
+                #----------------------------------------------------------------------------------
+
+                sector = self.smooth(sector / 255, 10) * 255
+
+
+                #----------------------------------------------------------------------------------
+                noise[y * SimpleNoise.rectSide:yEnd, x * SimpleNoise.rectSide:xEnd]=sector
+
+        return noise
 
     def getSurface(self):
         return self.surface
@@ -75,11 +99,12 @@ class SimpleNoise:
         self.WIDTH=newWIDTH
         self.HEIGHT=newHEIGHT
 
-    def applyFilters(self,noise):
-        return noise
+    def regenerate(self):
+        self.generateVectors()
+        self.generateNoise()
+        self.generateSurface()
 
-
-class MixNoise:
+class MixNoise:  #  шум з багатьма октавами
     def __init__(self,WIDTH,HEIGHT):
         self.WIDTH = WIDTH
         self.HEIGHT = HEIGHT
@@ -93,26 +118,57 @@ class MixNoise:
         self.minValue=0
         self.maxValue=0
 
+        self.smooth = lambda t, i: self.smooth(t * t * (3 - 2 * t), i - 1) if i > 0 else t
+
         self.noiseArrayColors=np.zeros((self.HEIGHT,self.WIDTH,3))  # для малювидла                 (0 - 255)
         self.noiseArrayValues=np.zeros((self.HEIGHT,self.WIDTH))  # для більш складніших структур (self.minValue - self.maxValue)
 
+    def generateVectors(self):
+        for i in range(self.noisesCount):
+            self.noises[i].generateVectors()
 
     def generateNoise(self):
+        self.noiseArrayValues.fill(0)
         for i in range(self.noisesCount):
             self.noises[i].generateNoise()
             self.noises[i].noiseArrayValues=self.noises[i].noiseArrayValues*self.impacts[i]
             self.noiseArrayValues+=self.noises[i].noiseArrayValues
-    def generateSurface(self):
-        for i in range(self.noisesCount):
-            self.noises[i].generateSurface()
-            self.noiseArrayColors+=self.noises[i].noiseArrayColors
-        self.surface = surfarray.make_surface(self.noiseArrayColors)
 
+    def generateSurface(self):
+
+        self.noiseArrayColors = (self.noiseArrayValues - self.minValue) / (-self.minValue + self.maxValue) * 255
+        self.noiseArrayColors = np.rot90(self.noiseArrayColors)
+        self.noiseArrayColors = np.expand_dims(self.noiseArrayColors,2)
+        self.noiseArrayColors = np.concatenate([self.noiseArrayColors, self.noiseArrayColors, self.noiseArrayColors], 2)
+        self.noiseArrayColors = self.applyFilters(self.noiseArrayColors)
+        self.surface = surfarray.make_surface(self.noiseArrayColors.astype(dtype=np.uint8))
+
+    def applyFilters(self,noise):
+        for y in range((noise.shape[0]-1)//SimpleNoise.rectSide+1):
+            for x in range((noise.shape[1]-1)//SimpleNoise.rectSide+1):
+                xEnd=(x + 1) * SimpleNoise.rectSide
+                yEnd=(y + 1) * SimpleNoise.rectSide
+                if xEnd>=noise.shape[1]:
+                    xEnd=noise.shape[1]
+                if yEnd>=noise.shape[0]:
+                    yEnd=noise.shape[0]
+
+
+                sector=noise[y * SimpleNoise.rectSide:yEnd, x * SimpleNoise.rectSide:xEnd]
+                #----------------------------------------------------------------------------------
+
+                sector = self.smooth(sector / 256, 4) * 255
+
+
+                #----------------------------------------------------------------------------------
+                noise[y * SimpleNoise.rectSide:yEnd, x * SimpleNoise.rectSide:xEnd]=sector
+
+        return noise
 
     def getSurface(self):
         return self.surface
 
-    def addNoise(self,noise,impact=1):
+    def addNoise(self,noise,impact=1.0):
         noise.resize(self.WIDTH,self.HEIGHT)
 
         self.noisesCount+=1
@@ -121,8 +177,10 @@ class MixNoise:
         self.minValue+=noise.minValue*impact
         self.maxValue+=noise.maxValue*impact
 
-        noise.generateNoise()
-
+    def regenerate(self):
+        self.generateVectors()
+        self.generateNoise()
+        self.generateSurface()
 class Filter:
     def __init__(self,type,filter):
         self.filter=filter
@@ -131,8 +189,8 @@ class Filter:
 
 class Game:
     def __init__(self):
-        self.WIDTH = 256
-        self.HEIGHT = 256
+        self.WIDTH = 1000
+        self.HEIGHT = 500
         self.WINDOW_SIZE = Vector2(self.WIDTH,self.HEIGHT)
         self.FPS = 60
         self.BACKGROUND = (0,0,0)
@@ -146,7 +204,15 @@ class Game:
         self.mPosBuf = [0,Vector2(0,0)]
 
 
-        self.noise1=SimpleNoise(256,256,16)
+        n1=SimpleNoise(self.WIDTH,self.HEIGHT,100)
+        n2=SimpleNoise(self.WIDTH,self.HEIGHT,30)
+        n3 = SimpleNoise(self.WIDTH, self.HEIGHT, 10)
+
+        self.noise1=MixNoise(self.WIDTH,self.HEIGHT)
+        self.noise1.addNoise(n1)
+        self.noise1.addNoise(n2,0.3)
+        self.noise1.addNoise(n3,0.1)
+
         self.noise1.generateVectors()
         self.noise1.generateNoise()
         self.noise1.generateSurface()
@@ -160,14 +226,10 @@ class Game:
             if even.type == MOUSEBUTTONDOWN:
                 if even.button == BUTTON_LEFT:
                     self.mPosBuf = [True,Vector2(even.pos)]
-        pressed=key.get_pressed()
-        if pressed[K_s]:
-            self.roll[1]+=4
-        if pressed[K_w]:
-            self.roll[1]-=4
 
     def mainUpdate(self):
-        pass
+        self.noise1.regenerate()
+
 
     def mainDraw(self):
         self.win.fill(self.BACKGROUND)
