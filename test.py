@@ -1,24 +1,13 @@
-# coding: utf-8
-# Your code here!
+import numpy as np
 
-t = int(input())
-for _ in range(t):
-    n = int(input())
-    a = list(map(int, input().split()))
-    st = sum(a)
-    tree = [st]
-    for i in range(n):
-        next_gen = []
-        for i, k in enumerate(tree):
-            if k in a:
-                del a[a.index(k)]
-            else:
-                next_gen.append(round(k / 2 - 0.25))
-                next_gen.append(round(k / 2 + 0.25))
-        tree = next_gen.copy()
-        if next_gen == [] and a==[]:
-            print("yes")
-            break
-        if len(next_gen) > n or (next_gen == [] and a!=[]):
-            print("no")
-            break
+a=np.array([[True],[False]])
+b=np.array([
+    [1,0,1],
+    [2,6,1]
+])
+c=np.array([
+    [0,1,1],
+    [6,2,1]
+])
+print(np.where(a,b,[5,53,1]))
+print(a.shape,b.shape,np.array([5,53,1]).shape)
