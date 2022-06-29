@@ -1,8 +1,9 @@
 import numpy as np
 from pygame import *
+import random as rd
 init()
 class View:
-    def __init__(self,rect,magnetic=[]):
+    def __init__(self,rect,magnetic=[],alfa=False):
         #  magnetic:     top  down  left  right
 
         if "top" in magnetic:
@@ -10,13 +11,18 @@ class View:
         if "left" in magnetic:
             rect.x=0
 
-
         self.magnetic=magnetic
         self.posts = []
-        self.surface=Surface(rect.size)
+
+        if alfa:
+            self.surface=Surface(rect.size,flags=SRCALPHA)
+        else:
+            self.surface=Surface(rect.size)
+
         self.rect=rect                          # координати відносно контейнера
         self.rectDraw=self.surface.get_rect()   # рект свого сурвейса    (!!! МІНЯЄТЬСЯ ТІЛЬКИ ПРИ RESIZE !!!)
         self.absoluteRect=rect                  # абсолютні координати
+        self.figures=[]
 
     def update(self,events):
         self.updateSelf(events)
@@ -24,15 +30,19 @@ class View:
 
     def draw(self,surface):
         self.drawSelf()
-        self.drawPost()
+        self.drawFigures()
+        self.drawPost(surface)
         surface.blit(self.surface,self.rect.topleft)
 
+    def drawFigures(self):
+        for figure in self.figures:
+            figure.draw(self.surface)
 
     def drawSelf(self):
         pass
 
-    def drawPost(self):
-        for post in self.posts:
+    def drawPost(self,surface):   # surface  --- surface від контейнера
+        for post in self.posts:   #  self.surface ---  своя surface
             post.draw(self.surface)
 
     def updateSelf(self,events):
@@ -45,6 +55,12 @@ class View:
     def addView(self,view):
         self.posts.append(view)
         view.added(self)
+
+    def addFigure(self,figure):
+        self.figures.append(figure)
+
+    def removeFigure(self,figure):
+        self.figures.remove(figure)
 
     def added(self,view):
         if "right" in self.magnetic:
@@ -71,6 +87,16 @@ class View:
         self.rect.size=self.rectDraw.size
         self.absoluteRect.size=self.rectDraw.size
 
+class Figure:
+    def __init__(self,painter,*args):
+        self.painter=painter
+        self.args=args
+
+    def draw(self,surface):
+        self.painter(surface,*self.args)
+
+    def setArgs(self,*args):
+        self.args=args
 
 
 class Button(View):
@@ -113,7 +139,7 @@ class Text(View):
         self.background=background
         self.invisible=False if len(background)<4 else True
         self.background=self.background[:4]
-        super(Text, self).__init__(Rect(x, y, 1, 1),magnetic)
+        super(Text, self).__init__(Rect(x, y, 1, 1),magnetic,True)
         self.setText(text)
 
     def draw(self,surface):
@@ -151,19 +177,15 @@ class Image(View):
         self.imageSurface=surface
 
 class Container(View):
-    def __init__(self,rect,magnetic,background,border):
+    def __init__(self,rect,magnetic,background,border,alfa=False):
         # border - ширина і колір   [1, (255,0,0)]
-        # якщо background == (0,0,0,0) тo прозорий фон
-        super(Container, self).__init__(rect,magnetic)
-        self.invisible=False if len(background)<4 else True
-        self.background=background[:3]
+        # якщо alfa == True тo прозорий фон
+        super(Container, self).__init__(rect,magnetic,alfa)
+        self.background=background
         self.borderWidth=border[0]
         self.borderColor=border[1]
 
     def draw(self,surface):
-        if self.invisible:
-            self.surface.fill(self.background)
-            self.surface.set_colorkey(self.background)
         super(Container, self).draw(surface)
 
 
@@ -195,22 +217,17 @@ class Map(Container):
                     post.follow=True
                     post.followPos=[mPos[0]-post.rect.x,mPos[1]-post.rect.y]
         #------------------------------------------------------------------------ якщо совгаю offset
-        if "downMouse" in events.keys() and events["downMouse"].button==1:
-            for post in self.posts:
-                if post.rect.collidepoint(mPos):
-                    self.follow=False
-                    break
+        if "downMouse" in events.keys() and events["downMouse"].button==1 and self.rectDraw.collidepoint(mPos):
+            if any([post.rect.collidepoint(mPos) for post in self.posts]):
+                self.follow=False
             else:
                 self.follow=True
                 self.followPos=mPos
                 for post in self.posts:
                     post.followPos=post.rect.topleft
-
         if self.follow:
             for post in self.posts:
                 post.move([post.followPos[0]+mPos[0]-self.followPos[0],post.followPos[1]+mPos[1]-self.followPos[1]])
-
-
 
     def addView(self,view):
         super(Map, self).addView(view)
@@ -218,27 +235,38 @@ class Map(Container):
         view.followPos=[0,0]
 
 class List(Container):
-    def __init__(self,pos,magnetic,background,border,adapter):
+    def __init__(self,rect,magnetic,background,border,adapter):
         # adapter - функція яка вертає View
-        super(List, self).__init__(Rect(pos,[0,0]),magnetic,background,border)
+        super(List, self).__init__(rect,magnetic,background,border)
         self.adapter=adapter
+        self.realHeight=0
 
     def addElement(self,*args):
         newpost=self.adapter(*args)
         newwidth=self.rectDraw.width
-        newheight=self.rectDraw.height+newpost.rect.height
+        realHeight=self.realHeight
+        self.realHeight+=newpost.rect.height+newpost.rect.y
+        newheight=max(self.realHeight,self.rectDraw.height)
         if newpost.rect.width>self.rect.width:
             newwidth=newpost.rect.width
 
-        newpost.move([0,self.rectDraw.height])
-
+        newpost.move([0,realHeight])
+        print(newwidth,newheight,self.rectDraw.height)
         self.resize(newwidth,newheight)
 
         self.addView(newpost)
 
-def adapter(text):
-    return Container(Rect(0,0,100,100),[],(0,0,0,0),[1,(255,0,0)])
 
+
+def adapter(text):
+    cont=Container(Rect(0,0,100,100),[],(0,0,0),[1,(255,0,0)])
+    cont.addFigure(fig)
+    fig.setArgs((0,0,250),[0,0],[100,100])
+    return cont
+
+def drawwer(surface,color,start,end):
+    draw.line(surface,color,start,end,3)
+fig=Figure(drawwer,(0,250,0),[0,0],[100,100])
 class Game:
     def __init__(self):
         self.WIDTH = 1000
@@ -255,16 +283,18 @@ class Game:
 
         self.mPosBuf = [0,Vector2(0,0)]
 
-        listView=List([0,0],[],(0,0,0,0),[5,(255,0,0)],adapter)
+        listView=List(Rect(0,0,70,70),[],(0,0,0,0),[5,(255,0,0)],adapter)
         listView.addElement("Хелоу")
         listView.addElement("Альо")
-        self.mainView=Map(Rect(0,0,self.WIDTH,self.HEIGHT),[],self.BACKGROUND,[self.BORDER_WIDTH,self.BORDER])
+        self.mainView=Container(self.win.get_rect(),[],self.BACKGROUND,[self.BORDER_WIDTH,self.BORDER])
+        self.map=Map(Rect(0,0,self.WIDTH//2,self.HEIGHT),["right"],[0,0,0],[self.BORDER_WIDTH,self.BORDER])
+        self.mainView.addView(self.map)
         btn=Button(Rect(100, 100, 100, 100), lambda :print(1),["right"])
         btn.addText("print(1)",(255,255,255),30,(0,0,0,0))
-        self.mainView.addView(btn)
-        self.mainView.addView(listView)
+        self.map.addView(btn)
+        self.map.addView(listView)
 
-        self.mainView.addView(Text(150,150,"qwerty",(255,0,0),30,[*self.BACKGROUND,0]))
+        self.map.addView(Text(150,150,"qwerty",(255,0,0),30,[*self.BACKGROUND,0]))
 
     def checkInput(self):
         events=event.get()
