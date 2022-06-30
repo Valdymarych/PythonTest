@@ -7,128 +7,27 @@ class Node(View):
         self.connectorHeight=10
         self.impactWidth=30
 
-        self.connectorRect=Rect(0,0,self.connectorWidth,self.connectorHeight)
-
-        self.inputConnectorsCount=3
-        self.outputConnectorsCount=1
-
-        self.inputConnectorsSplit=self.rectDraw.height/self.inputConnectorsCount-self.connectorHeight
-        self.outputConnectorsSplit=self.rectDraw.height/self.outputConnectorsCount-self.connectorHeight
-
-        self.inputConnectors=[]
-        self.outputConnectors=[]
-        self.allConnectors=[]
-
-        for i in range(self.inputConnectorsCount):
-            connectorRect=Rect(0,(i+0.5)*self.inputConnectorsSplit+i*self.connectorHeight,self.connectorWidth,self.connectorHeight)
-            self.inputConnectors.append(Connector(connectorRect,[],"in"))
-            self.addView(self.inputConnectors[-1])
-        for i in range(self.outputConnectorsCount):
-            connectorRect=Rect(self.rectDraw.width+self.connectorWidth,(i+0.5)*self.outputConnectorsSplit+i*self.connectorHeight,self.connectorWidth,self.connectorHeight)
-            self.outputConnectors.append(Connector(connectorRect,[],"out"))
-            self.addView(self.outputConnectors[-1])
-
-        self.allConnectors=self.inputConnectors+self.outputConnectors
     def updateSelf(self,events):
         pass
 
-    def drawPost(self,surface):
-        for post in self.posts:
-            if post in self.allConnectors:
-                post.draw(surface)
-            else:
-                post.draw(self.surface)
 
     def drawSelf(self):
         self.surface.fill((0,0,0,0))
         draw.rect(self.surface,(0,0,0),self.rectDraw)
         draw.rect(self.surface,(0,255,0),self.rectDraw,1)
 
+
 class NodeSpace(Map):
     def __init__(self,rect,magnetic,background,border):
         super(NodeSpace, self).__init__(rect,magnetic,background,border)
-        def painterConnectionNoReady(surface,connOut,end):
-            draw.line(surface,(255,255,255),connOut.rect.center,end)
-        def painterConnectionReady(surface,connOut,connIn):
-            draw.line(surface,(255,255,255),connOut.rect.center,connIn.rect.center)
-        self.painterConnectionReady=painterConnectionReady
-        self.createConn=False
-        self.createConnConnector=None
-        self.createConnConnection=Connection(painterConnectionNoReady)
+
 
 
     def updateSelf(self,events):
         update=True
-        mPos=events["mousePos"]
-        mPos=[mPos[0]-self.absoluteRect.x,mPos[1]-self.absoluteRect.y]
-        if "downMouse" in events.keys() and events["downMouse"].button==1:
-            if not any([post.rect.collidepoint(mPos) for post in self.posts]):
-                for post in self.posts:
-                    for conn in post.outputConnectors:
-                        if conn.impactZone.collidepoint(events["mousePos"]):
-                            update=False
-                            self.createConn=True
-                            self.createConnConnector=conn
-                            self.createConnConnection.setArgs(self.createConnConnector,mPos)
-                            self.addFigure(self.createConnConnection)
-        if "clickMouse" in events.keys() and events["clickMouse"].button==1:
-            if self.createConn:
-
-                if not any([post.rect.collidepoint(mPos) for post in self.posts]):
-                    for post in self.posts:
-                        for conn in post.inputConnectors:
-                            if conn.impactZone.collidepoint(events["mousePos"]):
-                                self.addFigure(Connection(self.painterConnectionReady,self.createConnConnector,conn))
-
-                self.createConn=False
-                self.createConnConnector=None
-                self.removeFigure(self.createConnConnection)
-        print(len(self.figures))
-        if self.createConn:
-            self.createConnConnection.setArgs(self.createConnConnector,mPos)
         if update:
             super(NodeSpace, self).updateSelf(events)
 
-
-
-
-    def drawSelf(self):
-        super(NodeSpace, self).drawSelf()
-        for post in self.posts:
-            for conn in post.allConnectors:
-                draw.rect(self.surface,(255,255,255),conn.impactZone)
-
-class Connector(View):
-    def __init__(self,rect,magnetic,type):
-        super(Connector, self).__init__(rect,magnetic)
-        self.type=type
-        self.node=None
-        self.startRect=self.rect
-        self.impactZone=self.rect
-    def drawSelf(self):
-        if self.node!=None:
-            if self.type=="in":
-                draw.rect(self.surface,(255,0,0),self.rectDraw)
-            if self.type=="out":
-                draw.rect(self.surface,(0,255,0),self.rectDraw)
-            draw.rect(self.surface,(0,0,255),self.rectDraw,1)
-
-
-    def updateSelf(self,events):
-        if self.node!=None:
-            self.move([self.startRect[0]+self.node.rect[0]-self.rect.width,self.startRect[1]+self.node.rect[1]])
-            self.impactZone=self.rect.inflate(self.node.impactWidth-self.rect.width,self.node.inputConnectorsSplit if self.type=="in" else self.node.outputConnectorsSplit)
-
-    def move(self,topleft):
-        super(Connector, self).move(topleft)
-
-    def added(self,view):
-        super(Connector, self).added(view)
-        self.node=view
-
-class Connection(Figure):
-    def __init__(self,painter,*args):
-        super(Connection, self).__init__(painter,*args)
 
 def nodeAdapter():
     return Container(Rect(0,0,100,100),[],[155,155,0],[3,[0,0,255]])
