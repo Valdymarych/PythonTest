@@ -24,6 +24,11 @@ class View:
         self.absoluteRect=rect                  # абсолютні координати
         self.figures=[]
 
+        self.constrainteds=[]
+        self.constraintBy=None
+        self.constraintY=0
+        self.constraintX=0
+
     def update(self,events):
         self.updateSelf(events)
         self.updatePost(events)
@@ -78,6 +83,30 @@ class View:
         self.rect=Rect(topleft,self.rect.size)
         for post in self.posts:
             post.added(self)
+        for constrainted in self.constrainteds:
+            constrainted.applyConstraint()
+
+    def applyConstraint(self):
+        self.move((self.constraintBy.rect.x+self.constraintX,self.constraintBy.rect.y+self.constraintY))
+
+    def setConstraint(self,view,constX,constY):
+        if self.constraintBy:
+            self.constraintBy.constrainteds.remove(self)
+        view.addConstrainted(self)
+        self.constraintBy=view
+        self.constraintX=constX
+        self.constraintY=constY
+        self.applyConstraint()
+
+    def removeConstraint(self):
+        if self.constraintBy:
+            self.constraintBy.constrainteds.remove(self)
+        self.constraintBy=None
+        self.constraintX=0
+        self.constraintY=0
+
+    def addConstrainted(self,view):
+        self.constrainteds.append(view)
 
     def resize(self,width,height):
         oldsurf=self.surface
@@ -212,13 +241,13 @@ class Map(Container):
         for post in self.posts:
             if post.follow:
                 post.move([mPos[0]-post.followPos[0],mPos[1]-post.followPos[1]])
-            if post.rect.collidepoint(mPos):
+            if post.followableRect.collidepoint([mPos[0]-post.rect.x,mPos[1]-post.rect.y]):
                 if "downMouse" in events.keys() and events["downMouse"].button==1:
                     post.follow=True
                     post.followPos=[mPos[0]-post.rect.x,mPos[1]-post.rect.y]
         #------------------------------------------------------------------------ якщо совгаю offset
         if "downMouse" in events.keys() and events["downMouse"].button==1 and self.rectDraw.collidepoint(mPos):
-            if any([post.rect.collidepoint(mPos) for post in self.posts]):
+            if any([post.followableRect.collidepoint([mPos[0]-post.rect.x,mPos[1]-post.rect.y]) for post in self.posts]):
                 self.follow=False
             else:
                 self.follow=True
@@ -229,10 +258,15 @@ class Map(Container):
             for post in self.posts:
                 post.move([post.followPos[0]+mPos[0]-self.followPos[0],post.followPos[1]+mPos[1]-self.followPos[1]])
 
-    def addView(self,view):
+    def addView(self,view,followableRect=None):
         super(Map, self).addView(view)
         view.follow=False
         view.followPos=[0,0]
+        if followableRect:
+            view.followableRect=followableRect
+        else:
+            view.followableRect=view.rectDraw
+
 
 class List(Container):
     def __init__(self,rect,magnetic,background,border,adapter):
@@ -251,7 +285,6 @@ class List(Container):
             newwidth=newpost.rect.width
 
         newpost.move([0,realHeight])
-        print(newwidth,newheight,self.rectDraw.height)
         self.resize(newwidth,newheight)
 
         self.addView(newpost)
@@ -291,10 +324,13 @@ class Game:
         self.mainView.addView(self.map)
         btn=Button(Rect(100, 100, 100, 100), lambda :print(1),["right"])
         btn.addText("print(1)",(255,255,255),30,(0,0,0,0))
-        self.map.addView(btn)
+        text=Text(150,150,"qwerty",(255,0,0),30,[*self.BACKGROUND,0])
+        self.map.addView(btn,Rect(0,0,50,50))
         self.map.addView(listView)
 
-        self.map.addView(Text(150,150,"qwerty",(255,0,0),30,[*self.BACKGROUND,0]))
+        text.setConstraint(btn,100,50)
+
+        self.map.addView(text)
 
     def checkInput(self):
         events=event.get()
